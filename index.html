@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a6dc4">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RemindPay">
+<meta name="description" content="Track payments, bills, and policy renewals with timely reminders">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<title>RemindPay</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<style>
+:root {
+  --accent: #1a6dc4;
+  --accent-light: #e8f0fe;
+  --surface-0: #f5f5f4;
+  --surface-1: #ededeb;
+  --surface-2: #ffffff;
+  --text-primary: #1a1a18;
+  --text-secondary: #666660;
+  --text-muted: #9999a0;
+  --border: rgba(0,0,0,0.09);
+  --border-strong: rgba(0,0,0,0.18);
+  --radius: 8px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-0: #1a1a18;
+    --surface-1: #2a2a28;
+    --surface-2: #333330;
+    --text-primary: #f0f0ee;
+    --text-secondary: #aaaaaa;
+    --text-muted: #666660;
+    --border: rgba(255,255,255,0.1);
+    --border-strong: rgba(255,255,255,0.2);
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--surface-0); color: var(--text-primary); }
+
+#app { height: 100vh; display: flex; flex-direction: column; max-width: 430px; margin: 0 auto; position: relative; }
+
+/* Nav */
+.nav { display: flex; background: var(--surface-2); border-top: 0.5px solid var(--border); position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; z-index: 100; padding-bottom: var(--safe-bottom); }
+.nav-btn { flex: 1; padding: 10px 4px 8px; display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none; cursor: pointer; font-size: 10px; color: var(--text-muted); font-family: inherit; }
+.nav-btn i { font-size: 23px; }
+.nav-btn.active { color: var(--accent); }
+
+/* Scroll area */
+.pages { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: calc(70px + var(--safe-bottom)); padding-top: env(safe-area-inset-top, 0px); -webkit-overflow-scrolling: touch; }
+.page { display: none; animation: fadeIn 0.18s ease; }
+.page.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* Header */
+.page-header { padding: 20px 16px 8px; }
+.page-header h1 { font-size: 28px; font-weight: 600; }
+.page-header p { font-size: 14px; color: var(--text-secondary); margin-top: 2px; }
+
+/* Month band */
+.month-band { margin: 8px 16px 14px; background: var(--accent); border-radius: 18px; padding: 20px 22px; color: #fff; }
+.month-band .label { font-size: 12px; opacity: 0.8; }
+.month-band .amount { font-size: 36px; font-weight: 600; margin: 4px 0; }
+.month-band .sub { font-size: 13px; opacity: 0.75; }
+.month-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 16px 20px; }
+.stat-card { background: var(--surface-2); border: 0.5px solid var(--border); border-radius: 12px; padding: 14px; }
+.stat-card .s-label { font-size: 11px; color: var(--text-muted); margin-bottom: 5px; }
+.stat-card .s-val { font-size: 24px; font-weight: 600; }
+.stat-card .danger { color: #b33; }
+.stat-card .success { color: #2a7a2a; }
+
+/* Section title */
+.section-title { font-size: 12px; font-weight: 600; color: var(--text-muted); padding: 0 16px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* Category pills */
+.cat-row { display: flex; gap: 8px; overflow-x: auto; padding: 6px 16px 14px; scrollbar-width: none; }
+.cat-row::-webkit-scrollbar { display: none; }
+.cat-pill { padding: 7px 15px; border-radius: 20px; border: 0.5px solid var(--border-strong); font-size: 13px; cursor: pointer; white-space: nowrap; background: var(--surface-2); color: var(--text-secondary); flex-shrink: 0; font-family: inherit; }
+.cat-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Cards */
+.reminder-list { padding: 0 16px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+.r-card { background: var(--surface-2); border: 0.5px solid var(--border); border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: opacity 0.12s; user-select: none; }
+.r-card:active { opacity: 0.75; }
+.r-icon { width: 44px; height: 44px; border-radius: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 21px; }
+.r-icon.insurance { background: #e8f0fe; color: #1a6dc4; }
+.r-icon.loan { background: #fde8e8; color: #b33; }
+.r-icon.subscription { background: #e8fef0; color: #2a7a2a; }
+.r-icon.tax { background: #fef5e8; color: #b87000; }
+.r-icon.utility { background: #f0e8fe; color: #7a2ab3; }
+.r-icon.other { background: #e8f5fe; color: #0088aa; }
+.r-info { flex: 1; min-width: 0; }
+.r-name { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.r-date { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+.r-right { text-align: right; flex-shrink: 0; }
+.r-amount { font-size: 16px; font-weight: 600; }
+.r-badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; margin-top: 4px; display: inline-block; white-space: nowrap; }
+.badge-overdue { background: #b33; color: #fff; }
+.badge-urgent { background: #fde8e8; color: #b33; }
+.badge-soon { background: #fef5e8; color: #b87000; }
+.badge-ok { background: #e8fef0; color: #2a7a2a; }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 52px 32px; color: var(--text-muted); }
+.empty-state i { font-size: 52px; margin-bottom: 12px; display: block; }
+.empty-state p { font-size: 15px; line-height: 1.5; }
+
+/* FAB */
+.fab { position: fixed; bottom: calc(72px + var(--safe-bottom)); right: 20px; width: 56px; height: 56px; border-radius: 50%; background: var(--accent); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 4px 18px rgba(26,109,196,0.4); z-index: 200; transition: transform 0.15s; }
+.fab:active { transform: scale(0.91); }
+
+/* Bottom sheet */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 300; align-items: flex-end; justify-content: center; }
+.overlay.open { display: flex; animation: fadeOverlay 0.2s ease; }
+@keyframes fadeOverlay { from { opacity: 0; } to { opacity: 1; } }
+.sheet { background: var(--surface-2); border-radius: 22px 22px 0 0; padding: 16px 20px calc(28px + var(--safe-bottom)); width: 100%; max-width: 430px; animation: slideSheet 0.25s ease; max-height: 92vh; overflow-y: auto; }
+@keyframes slideSheet { from { transform: translateY(100%); } to { transform: none; } }
+.sheet-handle { width: 36px; height: 4px; background: var(--border-strong); border-radius: 2px; margin: 0 auto 18px; }
+.sheet h2 { font-size: 18px; font-weight: 600; margin-bottom: 20px; }
+.field { margin-bottom: 16px; }
+.field label { font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 6px; font-weight: 500; }
+.field input, .field select { width: 100%; padding: 11px 13px; border: 0.5px solid var(--border-strong); border-radius: 10px; font-size: 15px; font-family: inherit; background: var(--surface-0); color: var(--text-primary); -webkit-appearance: none; }
+.field input:focus, .field select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(26,109,196,0.15); }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.btn-primary { width: 100%; padding: 14px; background: var(--accent); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-family: inherit; cursor: pointer; font-weight: 600; margin-top: 6px; }
+.btn-primary:active { opacity: 0.85; }
+.btn-del { width: 100%; padding: 13px; background: none; color: #b33; border: 0.5px solid #f09595; border-radius: 12px; font-size: 15px; font-family: inherit; cursor: pointer; margin-top: 10px; }
+
+/* Notifications */
+.notif-item { background: var(--surface-2); border: 0.5px solid var(--border); border-radius: 12px; padding: 14px 16px; margin: 0 16px 10px; display: flex; gap: 12px; align-items: flex-start; }
+.notif-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 5px; }
+.notif-dot.read { background: transparent; border: 0.5px solid var(--border-strong); }
+.notif-body { flex: 1; font-size: 14px; line-height: 1.5; }
+.notif-time { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+
+/* Settings */
+.setting-row { background: var(--surface-2); border: 0.5px solid var(--border); border-radius: 12px; padding: 14px 16px; margin: 0 16px 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.setting-row .s-name { font-size: 15px; font-weight: 500; }
+.setting-row .s-desc { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+.toggle { width: 46px; height: 28px; border-radius: 14px; background: var(--border-strong); border: none; cursor: pointer; position: relative; flex-shrink: 0; transition: background 0.2s; }
+.toggle.on { background: var(--accent); }
+.toggle::after { content: ''; width: 22px; height: 22px; border-radius: 50%; background: #fff; position: absolute; top: 3px; left: 3px; transition: left 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+.toggle.on::after { left: 21px; }
+
+/* Toast */
+.toast-wrap { position: fixed; top: calc(env(safe-area-inset-top,0px) + 12px); left: 0; right: 0; z-index: 500; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+.toast { background: var(--surface-2); border: 0.5px solid var(--border-strong); border-radius: 16px; padding: 12px 16px; max-width: 370px; width: calc(100% - 32px); display: flex; align-items: flex-start; gap: 12px; pointer-events: auto; animation: toastIn 0.3s ease; box-shadow: 0 8px 32px rgba(0,0,0,0.18); }
+@keyframes toastIn { from { transform: translateY(-50px) scale(0.95); opacity: 0; } to { transform: none; opacity: 1; } }
+.toast-icon { width: 38px; height: 38px; border-radius: 10px; background: #fde8e8; display: flex; align-items: center; justify-content: center; font-size: 19px; color: #b33; flex-shrink: 0; }
+.toast-app { font-size: 11px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.02em; }
+.toast-title { font-size: 14px; font-weight: 600; margin-top: 1px; }
+.toast-msg { font-size: 13px; color: var(--text-secondary); }
+
+/* Install banner */
+.install-banner { margin: 8px 16px; background: var(--accent-light); border: 0.5px solid rgba(26,109,196,0.25); border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; }
+.install-banner p { font-size: 13px; color: #1a5099; flex: 1; line-height: 1.4; }
+.install-banner button { padding: 7px 14px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-size: 13px; font-family: inherit; cursor: pointer; white-space: nowrap; font-weight: 600; }
+.install-banner .close-btn { background: none; color: var(--text-muted); padding: 4px; font-size: 18px; }
+
+/* Notif permission banner */
+.perm-banner { margin: 0 16px 16px; background: #fef5e8; border: 0.5px solid rgba(184,112,0,0.3); border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; }
+.perm-banner p { font-size: 13px; color: #7a4800; flex: 1; line-height: 1.4; }
+.perm-banner button { padding: 7px 12px; background: #b87000; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-family: inherit; cursor: pointer; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="pages" id="pages">
+
+    <!-- HOME -->
+    <div class="page active" id="page-home">
+      <div class="page-header">
+        <h1>Reminders</h1>
+        <p id="home-subtitle">Loading…</p>
+      </div>
+      <div id="installBanner" style="display:none">
+        <div class="install-banner">
+          <i class="ti ti-download" style="font-size:22px;color:var(--accent)" aria-hidden="true"></i>
+          <p>Add RemindPay to your home screen for the best experience.</p>
+          <button onclick="installApp()">Install</button>
+          <button class="close-btn" onclick="document.getElementById('installBanner').style.display='none'"><i class="ti ti-x"></i></button>
+        </div>
+      </div>
+      <div id="notifPermBanner" style="display:none">
+        <div class="perm-banner">
+          <i class="ti ti-bell" style="font-size:20px;color:#b87000" aria-hidden="true"></i>
+          <p>Enable notifications to get payment reminders.</p>
+          <button onclick="requestNotifPerm()">Enable</button>
+        </div>
+      </div>
+      <div class="cat-row">
+        <div class="cat-pill active" onclick="filterCat('all',this)">All</div>
+        <div class="cat-pill" onclick="filterCat('insurance',this)">Insurance</div>
+        <div class="cat-pill" onclick="filterCat('loan',this)">Loans</div>
+        <div class="cat-pill" onclick="filterCat('subscription',this)">Subscriptions</div>
+        <div class="cat-pill" onclick="filterCat('tax',this)">Tax</div>
+        <div class="cat-pill" onclick="filterCat('utility',this)">Utilities</div>
+      </div>
+      <div class="section-title">Upcoming</div>
+      <div class="reminder-list" id="reminderList"></div>
+    </div>
+
+    <!-- MONTH -->
+    <div class="page" id="page-month">
+      <div class="page-header">
+        <h1 id="monthTitle">June 2026</h1>
+        <p>Payments due this month</p>
+      </div>
+      <div class="month-band">
+        <div class="label">Total due this month</div>
+        <div class="amount" id="monthTotal">₹0</div>
+        <div class="sub" id="monthSub">0 payments</div>
+      </div>
+      <div class="month-stats" id="monthStats"></div>
+      <div class="section-title">Due this month</div>
+      <div class="reminder-list" id="monthList"></div>
+    </div>
+
+    <!-- ALERTS -->
+    <div class="page" id="page-notifs">
+      <div class="page-header">
+        <h1>Alerts</h1>
+        <p>Recent reminders sent</p>
+      </div>
+      <div id="notifList"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="page-header">
+        <h1>Settings</h1>
+      </div>
+      <div class="section-title" style="margin-bottom:10px">Notification timing</div>
+      <div class="setting-row">
+        <div><div class="s-name">7 days before</div><div class="s-desc">Alert a week in advance</div></div>
+        <button class="toggle on" id="tog7" onclick="toggleSetting('7days',this)" aria-label="Toggle 7-day alert"></button>
+      </div>
+      <div class="setting-row">
+        <div><div class="s-name">3 days before</div><div class="s-desc">Alert 3 days in advance</div></div>
+        <button class="toggle on" id="tog3" onclick="toggleSetting('3days',this)" aria-label="Toggle 3-day alert"></button>
+      </div>
+      <div class="setting-row">
+        <div><div class="s-name">On due date</div><div class="s-desc">Alert on the actual day</div></div>
+        <button class="toggle on" id="tog0" onclick="toggleSetting('dueday',this)" aria-label="Toggle due-day alert"></button>
+      </div>
+      <div class="section-title" style="margin-top:22px;margin-bottom:10px">Display</div>
+      <div class="setting-row">
+        <div><div class="s-name">Currency</div><div class="s-desc">Used for all amounts</div></div>
+        <select onchange="setCurrency(this.value)" id="currSel" style="border:0.5px solid var(--border-strong);border-radius:8px;padding:7px 10px;font-size:14px;background:var(--surface-0);color:var(--text-primary);font-family:inherit">
+          <option value="₹">₹ INR</option>
+          <option value="$">$ USD</option>
+          <option value="€">€ EUR</option>
+          <option value="£">£ GBP</option>
+        </select>
+      </div>
+      <div class="section-title" style="margin-top:22px;margin-bottom:10px">About</div>
+      <div class="setting-row">
+        <div><div class="s-name">RemindPay</div><div class="s-desc">Payment reminder app</div></div>
+        <span style="font-size:13px;color:var(--text-muted)">v1.0</span>
+      </div>
+      <div class="setting-row" onclick="clearData()" style="cursor:pointer">
+        <div><div class="s-name" style="color:#b33">Clear all data</div><div class="s-desc">Remove all reminders</div></div>
+        <i class="ti ti-trash" style="color:#b33;font-size:20px" aria-hidden="true"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <nav class="nav" role="navigation">
+    <button class="nav-btn active" onclick="showPage('home')" id="nav-home" aria-label="Reminders">
+      <i class="ti ti-bell" aria-hidden="true"></i><span>Reminders</span>
+    </button>
+    <button class="nav-btn" onclick="showPage('month')" id="nav-month" aria-label="This month">
+      <i class="ti ti-calendar-month" aria-hidden="true"></i><span>This month</span>
+    </button>
+    <button class="nav-btn" onclick="showPage('notifs')" id="nav-notifs" aria-label="Alerts">
+      <i class="ti ti-device-mobile" aria-hidden="true"></i><span>Alerts</span>
+    </button>
+    <button class="nav-btn" onclick="showPage('settings')" id="nav-settings" aria-label="Settings">
+      <i class="ti ti-settings" aria-hidden="true"></i><span>Settings</span>
+    </button>
+  </nav>
+
+  <!-- FAB -->
+  <button class="fab" id="fab" onclick="openAdd()" aria-label="Add reminder">
+    <i class="ti ti-plus" aria-hidden="true"></i>
+  </button>
+
+  <!-- Toast container -->
+  <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
+</div>
+
+<!-- Add / Edit sheet -->
+<div class="overlay" id="addOverlay" onclick="overlayClick(event)">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-handle"></div>
+    <h2 id="sheetTitle">Add reminder</h2>
+    <input type="hidden" id="editId">
+    <div class="field">
+      <label for="f-name">Name</label>
+      <input type="text" id="f-name" placeholder="e.g. LIC Life Insurance" autocomplete="off">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="f-amount">Amount</label>
+        <input type="number" id="f-amount" placeholder="0" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label for="f-cat">Category</label>
+        <select id="f-cat">
+          <option value="insurance">Insurance</option>
+          <option value="loan">Loan / EMI</option>
+          <option value="subscription">Subscription</option>
+          <option value="tax">Tax</option>
+          <option value="utility">Utility</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="f-date">Due date</label>
+        <input type="date" id="f-date">
+      </div>
+      <div class="field">
+        <label for="f-repeat">Repeat</label>
+        <select id="f-repeat">
+          <option value="none">One-time</option>
+          <option value="monthly">Monthly</option>
+          <option value="yearly">Yearly</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="saveReminder()">Save reminder</button>
+    <button class="btn-del" id="deleteBtn" onclick="deleteReminder()" style="display:none">Delete reminder</button>
+  </div>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+const MONTH = TODAY.getMonth(), YEAR = TODAY.getFullYear();
+const MN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const ICONS = { insurance:'ti-shield-check', loan:'ti-building-bank', subscription:'ti-device-tv', tax:'ti-receipt-tax', utility:'ti-bolt', other:'ti-file-invoice' };
+let currency = '₹', reminders = [], notifications = [], settings = {'7days':true,'3days':true,'dueday':true}, currentFilter = 'all';
+let deferredInstall = null;
+
+// ─── Persistence ─────────────────────────────────────────
+function load() {
+  try {
+    const r = localStorage.getItem('rp_reminders'); if(r) reminders = JSON.parse(r);
+    const n = localStorage.getItem('rp_notifs'); if(n) notifications = JSON.parse(n);
+    const s = localStorage.getItem('rp_settings'); if(s) settings = Object.assign(settings, JSON.parse(s));
+    const c = localStorage.getItem('rp_currency'); if(c) currency = c;
+  } catch(e){}
+  if(!reminders.length) seed();
+}
+function save() {
+  try {
+    localStorage.setItem('rp_reminders', JSON.stringify(reminders));
+    localStorage.setItem('rp_notifs', JSON.stringify(notifications));
+    localStorage.setItem('rp_settings', JSON.stringify(settings));
+    localStorage.setItem('rp_currency', currency);
+  } catch(e){}
+}
+function seed() {
+  const t = new Date(); t.setHours(0,0,0,0);
+  reminders = [
+    {id:1, name:'LIC Life Insurance', amount:12500, category:'insurance', date:ds(add(t,36)), repeat:'yearly'},
+    {id:2, name:'Home Loan EMI', amount:22000, category:'loan', date:ds(add(t,6)), repeat:'monthly'},
+    {id:3, name:'Netflix', amount:649, category:'subscription', date:ds(add(t,2)), repeat:'monthly'},
+    {id:4, name:'Electricity Bill', amount:1800, category:'utility', date:ds(add(t,12)), repeat:'monthly'},
+    {id:5, name:'Advance Tax Q1', amount:8000, category:'tax', date:ds(add(t,-3)), repeat:'none'},
+  ];
+  save();
+}
+function add(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r;}
+function ds(d){return d.toISOString().split('T')[0];}
+
+// ─── Helpers ─────────────────────────────────────────────
+function daysUntil(s){const d=new Date(s);d.setHours(0,0,0,0);return Math.round((d-TODAY)/86400000);}
+function badge(days){
+  if(days<0) return['Overdue','badge-overdue'];
+  if(days===0) return['Due today','badge-urgent'];
+  if(days<=3) return[days+'d left','badge-urgent'];
+  if(days<=7) return[days+'d left','badge-soon'];
+  return[days+'d left','badge-ok'];
+}
+function fmt(n){return Number(n).toLocaleString('en-IN');}
+function dateLabel(s,short){const d=new Date(s);return d.toLocaleDateString('en-IN',{day:'numeric',month:'short',...(!short?{year:'numeric'}:{})});}
+function catLabel(r){return r==='monthly'?'Monthly':r==='yearly'?'Yearly':'One-time';}
+
+// ─── Render home ─────────────────────────────────────────
+function renderHome() {
+  const filtered = currentFilter==='all' ? reminders : reminders.filter(r=>r.category===currentFilter);
+  const sorted = [...filtered].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const list = document.getElementById('reminderList');
+  list.innerHTML='';
+  const urgent = sorted.filter(r=>daysUntil(r.date)<=7).length;
+  document.getElementById('home-subtitle').textContent = sorted.length
+    ? `${sorted.length} reminder${sorted.length!==1?'s':''}`+(urgent?` · ${urgent} urgent`:'')
+    : 'No reminders yet';
+  if(!sorted.length){list.innerHTML='<div class="empty-state"><i class="ti ti-bell-off" aria-hidden="true"></i><p>No reminders yet.<br>Tap + to add one.</p></div>';return;}
+  sorted.forEach(r=>{
+    const days=daysUntil(r.date), [bl,bc]=badge(days);
+    const div=document.createElement('div');
+    div.className='r-card'; div.setAttribute('role','button'); div.setAttribute('tabindex','0');
+    div.onclick=()=>openEdit(r.id);
+    div.onkeydown=e=>{if(e.key==='Enter')openEdit(r.id);};
+    div.innerHTML=`<div class="r-icon ${r.category}" aria-hidden="true"><i class="ti ${ICONS[r.category]||'ti-file'}"></i></div>
+    <div class="r-info"><div class="r-name">${r.name}</div><div class="r-date">${dateLabel(r.date)} · ${catLabel(r.repeat)}</div></div>
+    <div class="r-right"><div class="r-amount">${currency}${fmt(r.amount)}</div><span class="r-badge ${bc}">${bl}</span></div>`;
+    list.appendChild(div);
+  });
+}
+
+// ─── Render month ─────────────────────────────────────────
+function renderMonth(){
+  document.getElementById('monthTitle').textContent=`${MN[MONTH]} ${YEAR}`;
+  const items = reminders.map(r=>{
+    if(r.repeat==='monthly'){
+      const orig=new Date(r.date), eff=new Date(YEAR,MONTH,orig.getDate());
+      return Object.assign({},r,{effDate:ds(eff)});
+    }
+    return Object.assign({},r,{effDate:r.date});
+  }).filter(r=>new Date(r.effDate).getFullYear()===YEAR && new Date(r.effDate).getMonth()===MONTH);
+
+  const total=items.reduce((s,r)=>s+Number(r.amount),0);
+  const overdue=items.filter(r=>daysUntil(r.effDate)<0).length;
+  const upcoming=items.filter(r=>daysUntil(r.effDate)>=0).length;
+  document.getElementById('monthTotal').textContent=`${currency}${fmt(total)}`;
+  document.getElementById('monthSub').textContent=`${items.length} payment${items.length!==1?'s':''}`;
+  document.getElementById('monthStats').innerHTML=`
+    <div class="stat-card"><div class="s-label">Upcoming</div><div class="s-val success">${upcoming}</div></div>
+    <div class="stat-card"><div class="s-label">Overdue</div><div class="s-val danger">${overdue}</div></div>`;
+  const list=document.getElementById('monthList');
+  list.innerHTML='';
+  if(!items.length){list.innerHTML='<div class="empty-state"><i class="ti ti-calendar-off" aria-hidden="true"></i><p>Nothing due this month.</p></div>';return;}
+  [...items].sort((a,b)=>new Date(a.effDate)-new Date(b.effDate)).forEach(r=>{
+    const days=daysUntil(r.effDate),[bl,bc]=badge(days);
+    const div=document.createElement('div'); div.className='r-card'; div.onclick=()=>openEdit(r.id);
+    div.innerHTML=`<div class="r-icon ${r.category}" aria-hidden="true"><i class="ti ${ICONS[r.category]||'ti-file'}"></i></div>
+    <div class="r-info"><div class="r-name">${r.name}</div><div class="r-date">${dateLabel(r.effDate,true)}</div></div>
+    <div class="r-right"><div class="r-amount">${currency}${fmt(r.amount)}</div><span class="r-badge ${bc}">${bl}</span></div>`;
+    list.appendChild(div);
+  });
+}
+
+// ─── Notifications ────────────────────────────────────────
+function checkAndNotify(){
+  reminders.forEach(r=>{
+    const days=daysUntil(r.date);
+    let msg=null;
+    if(days===7 && settings['7days']) msg=`<strong>${r.name}</strong> is due in 7 days (${dateLabel(r.date)}) — ${currency}${fmt(r.amount)}`;
+    else if(days===3 && settings['3days']) msg=`<strong>${r.name}</strong> is due in 3 days — ${currency}${fmt(r.amount)}`;
+    else if(days===0 && settings['dueday']) msg=`<strong>${r.name}</strong> is due TODAY — ${currency}${fmt(r.amount)}`;
+    else if(days===-1) msg=`<strong>${r.name}</strong> was due yesterday — ${currency}${fmt(r.amount)}`;
+    if(!msg) return;
+    const key=`${r.id}-${days}`;
+    if(notifications.find(n=>n.key===key)) return;
+    const time=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    notifications.push({key,msg,time:`Today · ${time}`,read:false});
+    save();
+    if(days<=3) showToast(r,days);
+    if(Notification.permission==='granted' && days<=3) sendPush(r,days);
+  });
+}
+
+function renderNotifs(){
+  checkAndNotify();
+  const list=document.getElementById('notifList');
+  list.innerHTML='';
+  if(!notifications.length){list.innerHTML='<div class="empty-state"><i class="ti ti-bell-ringing" aria-hidden="true"></i><p>No alerts yet.<br>Add reminders to get notified.</p></div>';return;}
+  [...notifications].reverse().slice(0,30).forEach((n,i)=>{
+    const div=document.createElement('div'); div.className='notif-item';
+    div.innerHTML=`<div class="notif-dot ${i>4?'read':''}"></div><div class="notif-body">${n.msg}<div class="notif-time">${n.time}</div></div>`;
+    list.appendChild(div);
+  });
+}
+
+function showToast(r,days){
+  const wrap=document.getElementById('toastWrap');
+  const t=document.createElement('div'); t.className='toast';
+  const msg=days===0?'Due today!':days<0?'Overdue!':days===1?'Due tomorrow!':`Due in ${days} days`;
+  t.innerHTML=`<div class="toast-icon"><i class="ti ti-bell-ringing" aria-hidden="true"></i></div>
+  <div><div class="toast-app">REMINDPAY</div><div class="toast-title">${r.name}</div><div class="toast-msg">${msg} · ${currency}${fmt(r.amount)}</div></div>`;
+  wrap.appendChild(t);
+  setTimeout(()=>t.remove(),5500);
+}
+
+function sendPush(r,days){
+  const msg=days===0?'Due today!':days===1?'Due tomorrow!':days<0?'Overdue!':`Due in ${days} days`;
+  new Notification(`RemindPay: ${r.name}`,{body:`${msg} — ${currency}${fmt(r.amount)}`,icon:'icons/icon-192.png',badge:'icons/icon-192.png',tag:r.id});
+}
+
+async function requestNotifPerm(){
+  const perm=await Notification.requestPermission();
+  document.getElementById('notifPermBanner').style.display='none';
+  if(perm==='granted') showToastMsg('Notifications enabled!');
+}
+function showToastMsg(msg){
+  const wrap=document.getElementById('toastWrap');
+  const t=document.createElement('div'); t.className='toast';
+  t.innerHTML=`<div class="toast-icon" style="background:#e8fef0;color:#2a7a2a"><i class="ti ti-check" aria-hidden="true"></i></div><div><div class="toast-title">${msg}</div></div>`;
+  wrap.appendChild(t); setTimeout(()=>t.remove(),3000);
+}
+
+// ─── Page navigation ──────────────────────────────────────
+function showPage(p){
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  document.getElementById('nav-'+p).classList.add('active');
+  document.getElementById('fab').style.display = p==='home'?'':'none';
+  document.getElementById('pages').scrollTop=0;
+  if(p==='home') renderHome();
+  if(p==='month') renderMonth();
+  if(p==='notifs') renderNotifs();
+}
+
+function filterCat(cat,el){
+  currentFilter=cat;
+  document.querySelectorAll('.cat-pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  renderHome();
+}
+
+// ─── Sheet ────────────────────────────────────────────────
+function openAdd(){
+  document.getElementById('sheetTitle').textContent='Add reminder';
+  document.getElementById('editId').value='';
+  document.getElementById('f-name').value='';
+  document.getElementById('f-amount').value='';
+  document.getElementById('f-cat').value='insurance';
+  document.getElementById('f-date').value=ds(new Date());
+  document.getElementById('f-repeat').value='none';
+  document.getElementById('deleteBtn').style.display='none';
+  document.getElementById('addOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('f-name').focus(),300);
+}
+function openEdit(id){
+  const r=reminders.find(x=>x.id===id); if(!r)return;
+  document.getElementById('sheetTitle').textContent='Edit reminder';
+  document.getElementById('editId').value=id;
+  document.getElementById('f-name').value=r.name;
+  document.getElementById('f-amount').value=r.amount;
+  document.getElementById('f-cat').value=r.category;
+  document.getElementById('f-date').value=r.date;
+  document.getElementById('f-repeat').value=r.repeat;
+  document.getElementById('deleteBtn').style.display='';
+  document.getElementById('addOverlay').classList.add('open');
+}
+function overlayClick(e){if(e.target===document.getElementById('addOverlay'))closeSheet();}
+function closeSheet(){document.getElementById('addOverlay').classList.remove('open');}
+
+function saveReminder(){
+  const name=document.getElementById('f-name').value.trim();
+  const amount=parseFloat(document.getElementById('f-amount').value)||0;
+  const category=document.getElementById('f-cat').value;
+  const date=document.getElementById('f-date').value;
+  const repeat=document.getElementById('f-repeat').value;
+  if(!name||!date){alert('Please fill in the name and due date.');return;}
+  const id=document.getElementById('editId').value;
+  if(id){
+    const idx=reminders.findIndex(r=>r.id==id);
+    if(idx>=0) reminders[idx]={id:Number(id),name,amount,category,date,repeat};
+  } else {
+    reminders.push({id:Date.now(),name,amount,category,date,repeat});
+  }
+  save(); closeSheet(); renderHome();
+}
+function deleteReminder(){
+  const id=document.getElementById('editId').value; if(!id)return;
+  if(!confirm('Delete this reminder?'))return;
+  reminders=reminders.filter(r=>r.id!=id);
+  save(); closeSheet(); renderHome();
+}
+function toggleSetting(key,btn){
+  settings[key]=!settings[key];
+  btn.classList.toggle('on',settings[key]);
+  save();
+}
+function setCurrency(c){currency=c;save();renderHome();}
+function clearData(){
+  if(!confirm('Delete ALL reminders and alerts? This cannot be undone.'))return;
+  reminders=[]; notifications=[]; save(); renderHome(); showToastMsg('All data cleared.');
+}
+
+// ─── PWA install ──────────────────────────────────────────
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault(); deferredInstall=e;
+  document.getElementById('installBanner').style.display='';
+});
+window.addEventListener('appinstalled',()=>{
+  document.getElementById('installBanner').style.display='none';
+  showToastMsg('RemindPay installed!');
+});
+function installApp(){
+  if(deferredInstall){deferredInstall.prompt();deferredInstall.userChoice.then(()=>{deferredInstall=null;document.getElementById('installBanner').style.display='none';});}
+}
+
+// ─── Service Worker ───────────────────────────────────────
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').then(()=>{
+    if(Notification.permission==='default'){
+      document.getElementById('notifPermBanner').style.display='';
+    }
+  });
+}
+
+// ─── Init ─────────────────────────────────────────────────
+load();
+document.getElementById('currSel').value=currency;
+[['7days','tog7'],['3days','tog3'],['dueday','tog0']].forEach(([k,id])=>{
+  document.getElementById(id).classList.toggle('on',settings[k]);
+});
+renderHome();
+setTimeout(checkAndNotify, 800);
+</script>
+</body>
+</html>
